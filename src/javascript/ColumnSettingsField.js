@@ -51,7 +51,7 @@ Ext.define('Rally.apps.kanban.ColumnSettingsField', {
         this.callParent(arguments);
 
         this._store = Ext.create('Ext.data.Store', {
-            fields: ['column', 'shown', 'wip', 'scheduleStateMapping', 'cardFields'],
+            fields: ['column', 'shown', 'wip', 'scheduleStateMapping', 'stateMapping', 'cardFields'],
             data: []
         });
 
@@ -125,6 +125,26 @@ Ext.define('Rally.apps.kanban.ColumnSettingsField', {
                     xtype: 'rallyfieldvaluecombobox',
                     model: Ext.identityFn('HierarchicalRequirement'),
                     field: 'ScheduleState',
+                    listeners: {
+                        ready: function (combo) {
+                            var noMapping = {};
+                            noMapping[combo.displayField] = '--No Mapping--';
+                            noMapping[combo.valueField] = '';
+
+                            combo.store.insert(0, [noMapping]);
+                        }
+                    }
+                }
+            },
+            {
+                text: 'Defect State Mapping',
+                dataIndex: 'stateMapping',
+                emptyCellText: '--No Mapping--',
+                flex: 2,
+                editor: {
+                    xtype: 'rallyfieldvaluecombobox',
+                    model: Ext.identityFn('Defect'),
+                    field: 'State',
                     listeners: {
                         ready: function (combo) {
                             var noMapping = {};
@@ -230,7 +250,8 @@ Ext.define('Rally.apps.kanban.ColumnSettingsField', {
             if (record.get('shown')) {
                 columns[record.get('column')] = {
                     wip: record.get('wip'),
-                    scheduleStateMapping: record.get('scheduleStateMapping')
+                    scheduleStateMapping: record.get('scheduleStateMapping'),
+                    stateMapping: record.get('stateMapping')
                 };
                 if (this.shouldShowColumnLevelFieldPicker) {
                     var cardFields = this._getCardFields(record.get('cardFields'));
@@ -281,6 +302,7 @@ Ext.define('Rally.apps.kanban.ColumnSettingsField', {
             shown: false,
             wip: '',
             scheduleStateMapping: '',
+            stateMapping: '',
             cardFields: this.defaultCardFields
         };
 
@@ -288,7 +310,8 @@ Ext.define('Rally.apps.kanban.ColumnSettingsField', {
             Ext.apply(column, {
                 shown: true,
                 wip: pref.wip,
-                scheduleStateMapping: pref.scheduleStateMapping
+                scheduleStateMapping: pref.scheduleStateMapping,
+                stateMapping: pref.stateMapping
             });
 
             if (pref.cardFields) {

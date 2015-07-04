@@ -32,6 +32,7 @@ Ext.define('Rally.apps.kanban.Settings', {
                 },
                 bubbleEvents: ['fieldselected', 'fieldready']
             },
+            
             {
                 name: 'columns',
                 readyEvent: 'ready',

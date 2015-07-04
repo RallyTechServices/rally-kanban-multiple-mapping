@@ -106,7 +106,6 @@ Ext.define("TSMultiKanbanApp", {
     },
 
     _addCardboardContent: function() {
-        console.log(this);
         if ( this.gridboard) { this.gridboard.destroy(); }
                 
         var cardboardConfig = this._getCardboardConfig();
@@ -403,6 +402,11 @@ Ext.define("TSMultiKanbanApp", {
             if (setting && setting.scheduleStateMapping) {
                 card.getRecord().set('ScheduleState', setting.scheduleStateMapping);
             }
+            console.log(card.getRecord());
+            
+            if (setting && setting.stateMapping && card.getRecord().get('_type') == 'defect') {
+                card.getRecord().set('State', setting.stateMapping);
+            }
         }
     },
 
@@ -426,34 +430,7 @@ Ext.define("TSMultiKanbanApp", {
     isExternal: function(){
         return typeof(this.getAppId()) == 'undefined';
     },
-    //showSettings:  Override
-//    showSettings: function(options) {
-//        this._appSettings = Ext.create('Rally.app.AppSettings', Ext.apply({
-//            fields: this.getSettingsFields(),
-//            settings: this.getSettings(),
-//            defaultSettings: this.getDefaultSettings(),
-//            context: this.getContext(),
-//            settingsScope: this.settingsScope,
-//            autoScroll: true
-//        }, options));
-//
-//        this._appSettings.on('cancel', this._hideSettings, this);
-//        this._appSettings.on('save', this._onSettingsSaved, this);
-//        if (this.isExternal()){
-//            if (this.down('#settings_box').getComponent(this._appSettings.id)==undefined){
-//                this.down('#settings_box').add(this._appSettings);
-//            }
-//        } else {
-//            this.hide();
-//            this.up().add(this._appSettings);
-//        }
-//        return this._appSettings;
-//    },
-//    _onSettingsSaved: function(settings){
-//        Ext.apply(this.settings, settings);
-//        this._hideSettings();
-//        this.onSettingsUpdate(settings);
-//    },
+    
     //onSettingsUpdate:  Override
     onSettingsUpdate: function (settings){
         this.logger.log('onSettingsUpdate',settings);
