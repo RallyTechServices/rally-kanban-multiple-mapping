@@ -2,7 +2,15 @@
 
 A kanban board that allows more to map both schedule state and defect state to the columns.
 
+In addition to mapping columns to schedule states and defect states, the app also allows 
+for configuring a mapping of columns to defect states that will be set if the ready box is
+checked.
+
 ## Development Notes
+
+* Defect state is set in onCardSaved when the card is moved
+* Defect state from the Ready check is saved by a listener on the record changed action.
+
 
 ### First Load
 

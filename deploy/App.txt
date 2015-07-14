@@ -3,11 +3,11 @@
 <head>
     <title>Technical Services Multi-Map Kanban  Board</title>
     <!--  (c) 2015 Rally Software Development Corp.  All Rights Reserved. -->
-    <!--  Build Date: Sat Jul 04 2015 15:11:49 GMT-0700 (PDT) -->
+    <!--  Build Date: Tue Jul 14 2015 14:51:31 GMT-0700 (PDT) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Sat Jul 04 2015 15:11:49 GMT-0700 (PDT)";
-        var CHECKSUM = 35373932792;
+        var APP_BUILD_DATE = "Tue Jul 14 2015 14:51:31 GMT-0700 (PDT)";
+        var CHECKSUM = 38509999058;
     </script>
     
     <script type="text/javascript" src="/apps/2.0/sdk.js"></script>
@@ -184,7 +184,7 @@ Ext.define('Rally.apps.kanban.ColumnSettingsField', {
         this.callParent(arguments);
 
         this._store = Ext.create('Ext.data.Store', {
-            fields: ['column', 'shown', 'wip', 'scheduleStateMapping', 'stateMapping', 'cardFields'],
+            fields: ['column', 'shown', 'wip', 'scheduleStateMapping', 'stateMapping', 'readyMapping', 'cardFields'],
             data: []
         });
 
@@ -272,6 +272,26 @@ Ext.define('Rally.apps.kanban.ColumnSettingsField', {
             {
                 text: 'Defect State Mapping',
                 dataIndex: 'stateMapping',
+                emptyCellText: '--No Mapping--',
+                flex: 2,
+                editor: {
+                    xtype: 'rallyfieldvaluecombobox',
+                    model: Ext.identityFn('Defect'),
+                    field: 'State',
+                    listeners: {
+                        ready: function (combo) {
+                            var noMapping = {};
+                            noMapping[combo.displayField] = '--No Mapping--';
+                            noMapping[combo.valueField] = '';
+
+                            combo.store.insert(0, [noMapping]);
+                        }
+                    }
+                }
+            },
+            {
+                text: 'Ready State Mapping',
+                dataIndex: 'readyMapping',
                 emptyCellText: '--No Mapping--',
                 flex: 2,
                 editor: {
@@ -384,7 +404,8 @@ Ext.define('Rally.apps.kanban.ColumnSettingsField', {
                 columns[record.get('column')] = {
                     wip: record.get('wip'),
                     scheduleStateMapping: record.get('scheduleStateMapping'),
-                    stateMapping: record.get('stateMapping')
+                    stateMapping: record.get('stateMapping'),
+                    readyMapping: record.get('readyMapping')
                 };
                 if (this.shouldShowColumnLevelFieldPicker) {
                     var cardFields = this._getCardFields(record.get('cardFields'));
@@ -436,6 +457,7 @@ Ext.define('Rally.apps.kanban.ColumnSettingsField', {
             wip: '',
             scheduleStateMapping: '',
             stateMapping: '',
+            readyMapping: '',
             cardFields: this.defaultCardFields
         };
 
@@ -444,7 +466,8 @@ Ext.define('Rally.apps.kanban.ColumnSettingsField', {
                 shown: true,
                 wip: pref.wip,
                 scheduleStateMapping: pref.scheduleStateMapping,
-                stateMapping: pref.stateMapping
+                stateMapping: pref.stateMapping,
+                readyMapping: pref.readyMapping
             });
 
             if (pref.cardFields) {
@@ -883,11 +906,6 @@ Ext.define("TSMultiKanbanApp", {
 
     settingsScope: 'project',
     autoScroll: false,
-
-//    items: [
-//        {xtype:'container',itemId:'settings_box'},
-//        {xtype:'container',itemId:'display_box', layout: 'fit'}
-//    ],
     
     config: {
         defaultSettings: {
@@ -913,6 +931,8 @@ Ext.define("TSMultiKanbanApp", {
             success: this._onStoryModelRetrieved,
             scope: this
         });
+        this.subscribe(Rally.Message.objectUpdate, this._onReadyFieldChanged, this);
+        
     },
 
     getOptions: function() {
@@ -1252,6 +1272,38 @@ Ext.define("TSMultiKanbanApp", {
         params[groupByFieldName] = this.gridboard.getGridOrBoard().getColumns()[0].getValue();
     },
 
+    _onReadyFieldChanged: function(record, fields, card) {
+        console.log('_onReadyFieldChanged',record,fields,card);
+        
+        var column = card.ownerColumn;
+        console.log('column', column);
+        console.log('attribute on column:', column.attribute);
+        
+        var columnSetting = this._getColumnSetting();
+        if (columnSetting) {
+            var setting = columnSetting[column.getValue()];
+            console.log('columnSetting', columnSetting);
+            console.log('setting',setting);
+            console.log('maps', setting.readyMapping);
+
+            if (setting && setting.readyMapping && card.getRecord().get('_type') == 'defect') {
+                console.log('ya');
+                var state = card.getRecord().get('State');
+                var ready = card.getRecord().get('Ready');
+                
+                console.log(ready,state,setting.readyMapping);
+                
+                if ( ready && state != setting.readyMapping ) {
+                    console.log("Changing STATE to: ", setting.readyMapping);
+                    card.getRecord().set('State', setting.readyMapping);
+                    card.getRecord().save();
+                }
+            }
+        }
+        
+        
+    },
+    
     _onBeforeCardSaved: function(column, card, type) {
         var columnSetting = this._getColumnSetting();
         if (columnSetting) {
@@ -1259,7 +1311,6 @@ Ext.define("TSMultiKanbanApp", {
             if (setting && setting.scheduleStateMapping) {
                 card.getRecord().set('ScheduleState', setting.scheduleStateMapping);
             }
-            console.log(card.getRecord());
             
             if (setting && setting.stateMapping && card.getRecord().get('_type') == 'defect') {
                 card.getRecord().set('State', setting.stateMapping);
