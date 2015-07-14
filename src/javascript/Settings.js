@@ -72,7 +72,27 @@ Ext.define('Rally.apps.kanban.Settings', {
                 {name: 'Sizing', value: 'PlanEstimate'}
            ]
         });
-
+        
+        items.push({
+            name: 'columnChangeReasonField',
+            xtype: 'changesettingsfield',
+            fieldLabel: 'Change Reason Field',
+            margin: '10 0 0 0',
+            checkboxName: 'showChangeReasonPopup',
+            fieldboxName: 'changeReasonField',
+            mapsToMultiplePreferenceKeys: ['showChangeReasonPopup', 'changeReasonField'],
+            readyEvent: 'ready',
+            isAllowedFieldFn: function(field) {
+                var attr = field.attributeDefinition;
+                return (attr.Custom && (attr.Constrained || attr.AttributeType.toLowerCase() !== 'string') ||
+                    attr.Constrained || _.contains(['boolean'], attr.AttributeType.toLowerCase())) &&
+                    !_.contains(['web_link', 'text', 'date'], attr.AttributeType.toLowerCase());
+            },
+            explicitFields: [
+                
+           ]
+        });
+        
         items.push(
             {
                 name: 'hideReleasedCards',

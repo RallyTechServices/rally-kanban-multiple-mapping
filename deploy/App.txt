@@ -3,11 +3,11 @@
 <head>
     <title>Technical Services Multi-Map Kanban  Board</title>
     <!--  (c) 2015 Rally Software Development Corp.  All Rights Reserved. -->
-    <!--  Build Date: Tue Jul 14 2015 14:51:31 GMT-0700 (PDT) -->
+    <!--  Build Date: Tue Jul 14 2015 16:44:58 GMT-0700 (PDT) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Tue Jul 14 2015 14:51:31 GMT-0700 (PDT)";
-        var CHECKSUM = 38509999058;
+        var APP_BUILD_DATE = "Tue Jul 14 2015 16:44:58 GMT-0700 (PDT)";
+        var CHECKSUM = 59584707717;
     </script>
     
     <script type="text/javascript" src="/apps/2.0/sdk.js"></script>
@@ -15,6 +15,340 @@
     <script type="text/javascript">
         Rally.onReady(function() {
              
+
+/**
+ * A dialog that displays a drop-down for choosing a value
+ *
+ *     @example
+ *     Ext.create('Rally.ui.dialog.ChangeReasonDialog', {
+ *         artifactTypes: ['userstory', 'portfolioitem/feature'],
+ *         autoShow: true,
+ *         model: 'User Story',
+ *         dropdownField: 'c_myfield',
+ *         height: 250,
+ *         title: 'Pick me',
+ *         listeners: {
+ *             valuechosen: function(dialog, selectedValue){
+ *                 Ext.Msg.alert('Chooser', selectedValue + ' was chosen');
+ *             },
+ *             scope: this
+ *         }
+ *      });
+ */
+Ext.define('Rally.ui.dialog.ChangeReasonDialog', {
+    requires: [
+        'Ext.data.Store',
+        'Rally.data.ModelFactory',
+        'Rally.data.wsapi.Filter',
+        'Rally.ui.Button',
+        'Rally.ui.EmptyTextFactory',
+        'Rally.ui.grid.Grid',
+        'Rally.ui.selection.CheckboxModel',
+        'Rally.util.Ref'
+    ],
+    extend: 'Rally.ui.dialog.Dialog',
+    alias: 'widget.tschangereasondialog',
+
+    height: 150,
+    width: 200,
+    /*layout: 'fit',*/
+    closable: false,
+    draggable: true,
+
+    config: {
+        /**
+         * @cfg {String}
+         * Title to give to the dialog
+         */
+        title: '',
+
+        model: 'User Story',
+        dropdownField: 'ScheduleState',
+
+        /**
+         * @cfg {String}
+         * Text to be displayed on the button when selection is complete
+         */
+        selectionButtonText: 'Choose'
+
+    },
+
+    constructor: function(config) {
+        this.mergeConfig(config);
+
+        this.callParent([this.config]);
+    },
+
+    selectionCache: [],
+
+    initComponent: function() {
+        this.callParent(arguments);
+
+        this.addEvents(
+            /**
+             * @event valuechosen
+             * Fires when user clicks done after choosing
+             * @param {Rally.ui.dialog.ChangeReasonDialog} source the dialog
+             * @param {String} selected value from dropdown
+             */
+            'valuechosen'
+        );
+
+        //this.addCls(['chooserDialog', 'chooser-dialog']);
+    },
+
+    destroy: function() {
+        this.callParent(arguments);
+    },
+
+    beforeRender: function() {
+        this.callParent(arguments);
+        
+        this.addDocked({
+            xtype: 'toolbar',
+            dock: 'bottom',
+            padding: '0 0 10 0',
+            layout: {
+                type: 'hbox',
+                pack: 'center'
+            },
+            ui: 'footer',
+            items: [
+                {
+                    xtype: 'rallybutton',
+                    itemId: 'doneButton',
+                    text: this.selectionButtonText,
+                    cls: 'primary rly-small',
+                    scope: this,
+                    disabled: true,
+                    userAction: 'clicked done in dialog',
+                    handler: function() {
+                        this.fireEvent('valuechosen', this, this.getValue());
+                        this.close();
+                    }
+                }/*,
+                {
+                    xtype: 'rallybutton',
+                    text: 'Cancel',
+                    cls: 'secondary rly-small',
+                    handler: this.close,
+                    scope: this,
+                    ui: 'link'
+                }*/
+            ]
+        });
+
+        if (this.introText) {
+            this.addDocked({
+                xtype: 'component',
+                componentCls: 'intro-panel',
+                html: this.introText
+            });
+        }
+
+        this.buildDropdown();
+    },
+
+
+
+    buildDropdown: function() {
+        if (this.dropdown) {
+            this.dropdown.destroy();
+        }
+
+        this.dropdown = Ext.create('Rally.ui.combobox.FieldValueComboBox',{
+            fieldLabel: 'Reason for Column Change:',
+            labelAlign: 'top',
+            model: this.model,
+            field: this.dropdownField ,
+            padding: 10
+        });
+        
+        this.add(this.dropdown);
+        this._enableDoneButton();
+    },
+
+    getValue: function() {
+        return this.dropdown.getValue();
+    },
+    
+    _enableDoneButton: function() {
+        this.down('#doneButton').setDisabled(false);
+    }
+
+});
+/**
+ * a checkbox and a dropdown box
+ */
+Ext.define('Rally.apps.common.ChangeSettingsField', {
+    alias: 'widget.changesettingsfield',
+    extend: 'Ext.form.FieldContainer',
+    requires: [
+        'Rally.ui.CheckboxField',
+        'Rally.ui.combobox.ComboBox',
+        'Rally.ui.plugin.FieldValidationUi',
+        'Rally.data.ModelFactory',
+        'Rally.data.wsapi.ModelBuilder'
+    ],
+
+    mixins: {
+        field: 'Ext.form.field.Field'
+    },
+
+    layout: 'hbox',
+
+    cls: 'row-settings',
+
+    config: {
+        /**
+         * @cfg {Object}
+         *
+         * The row settings value for this field
+         */
+        value: undefined,
+
+        /**
+         * @cfg {Function}
+         * A function which should return true if the specified field should
+         * be included in the list of available swimlane fields
+         * @param {Rally.data.wsapi.Field} field
+         */
+        isAllowedFieldFn: Ext.emptyFn,
+
+        /**
+         * @cfg {Object[]}
+         *
+         * Array of objects with name and value keys to be used by the row combobox
+         * [{'name': 'Blocked', 'value': 'Blocked'},{'name': 'Owner', 'value': 'Owner'}]
+         */
+        explicitFields: [],
+
+        /**
+         * @cfg {String[]}
+         * Array of models for which to list fields for
+         */
+        modelNames: ['userstory', 'defect'],
+
+        /**
+         * @cfg {String[]}
+         * Array of field display names to show if found on at least 1 model, sortable and are not hidden
+         */
+        whiteListFields: [],
+        /*
+         * name for the checkbox to be used in the settings
+         * (be sure to put it in the mapsToMultiplePreferenceKeys setting, too)
+         */
+        checkboxName: 'showChangeReasonPopup',
+        /*
+         * name for the field dropdown to be used in the settings
+         * (be sure to put it in the mapsToMultiplePreferenceKeys setting, too)
+         */
+        fieldboxName: 'changeReasonField'
+    },
+
+    initComponent: function() {
+        this.callParent(arguments);
+
+        this.mixins.field.initField.call(this);
+
+        this.add([
+            {
+                xtype: 'rallycheckboxfield',
+                name: this.checkboxName,
+                boxLabel: '',
+                margin: '0',
+                submitValue: false,
+                value: this.getValue().checked,
+                listeners: {
+                    change: function(checkbox, checked) {
+                        this.down('rallycombobox').setDisabled(!checked);
+                    },
+                    scope: this
+                }
+            },
+            {
+                xtype: 'rallycombobox',
+                plugins: ['rallyfieldvalidationui'],
+                name: this.fieldboxName,
+                margin: '0 6px',
+                width: 130,
+                emptyText: 'Choose Field...',
+                displayField: 'name',
+                valueField: 'value',
+                disabled: this.getValue().checked !== 'true',
+                editable: false,
+                submitValue: false,
+                storeType: 'Ext.data.Store',
+                storeConfig: {
+                    remoteFilter: false,
+                    fields: ['name', 'value'],
+                    data: []
+                }
+            }
+        ]);
+
+        this._loadModels();
+    },
+
+    _loadModels: function() {
+        Rally.data.ModelFactory.getModels({
+            types: this.getModelNames(),
+            context: this.context,
+            success: this._onModelsRetrieved,
+            scope: this
+        });
+    },
+
+    _onModelsRetrieved: function (models) {
+        var fields = _.uniq(Ext.Array.merge(this.explicitFields, this._getRowableFields(_.values(models))), 'name');
+        var combobox = this.down('rallycombobox');
+        combobox.getStore().loadData(_.sortBy(fields, 'name'));
+        combobox.setValue(this.getValue().fieldField);
+        this.fireEvent('ready', this);
+    },
+
+    _getRowableFields: function (models) {
+        var artifactModel = Rally.data.wsapi.ModelBuilder.buildCompositeArtifact(models, this.context),
+            allFields = artifactModel.getFields(),
+            rowableFields = _.filter(allFields, function (field) {
+                var attr = field.attributeDefinition;
+                return attr && !attr.Hidden && attr.Sortable &&
+                    ((artifactModel.getModelsForField(field).length === models.length &&
+                    this.isAllowedFieldFn(field)) || _.contains(this.whiteListFields, field.displayName));
+            }, this);
+
+        return _.map(rowableFields, function(field) {
+            return {
+                name: field.displayName,
+                value: field.name
+            };
+        });
+    },
+
+    /**
+     * When a form asks for the data this field represents,
+     * give it the name of this field and the ref of the selected project (or an empty string).
+     * Used when persisting the value of this field.
+     * @return {Object}
+     */
+    getSubmitData: function() {
+        var data = {},
+            showField = this.down('rallycheckboxfield'),
+            fieldField = this.down('rallycombobox'),
+            checked = showField.getValue() && !_.isEmpty(fieldField.getValue());
+        data[showField.name] = checked;
+        if (checked) {
+            data[fieldField.name] = fieldField.getValue();
+        }
+        return data;
+    },
+
+    refreshWithNewModelType: function(type) {
+        this.setModelNames([type]);
+        this._loadModels();
+    }
+});
+
 Ext.define('Rally.apps.kanban.Column', {
     extend: 'Rally.ui.cardboard.Column',
     alias: 'widget.kanbancolumn',
@@ -732,7 +1066,27 @@ Ext.define('Rally.apps.kanban.Settings', {
                 {name: 'Sizing', value: 'PlanEstimate'}
            ]
         });
-
+        
+        items.push({
+            name: 'columnChangeReasonField',
+            xtype: 'changesettingsfield',
+            fieldLabel: 'Change Reason Field',
+            margin: '10 0 0 0',
+            checkboxName: 'showChangeReasonPopup',
+            fieldboxName: 'changeReasonField',
+            mapsToMultiplePreferenceKeys: ['showChangeReasonPopup', 'changeReasonField'],
+            readyEvent: 'ready',
+            isAllowedFieldFn: function(field) {
+                var attr = field.attributeDefinition;
+                return (attr.Custom && (attr.Constrained || attr.AttributeType.toLowerCase() !== 'string') ||
+                    attr.Constrained || _.contains(['boolean'], attr.AttributeType.toLowerCase())) &&
+                    !_.contains(['web_link', 'text', 'date'], attr.AttributeType.toLowerCase());
+            },
+            explicitFields: [
+                
+           ]
+        });
+        
         items.push(
             {
                 name: 'hideReleasedCards',
@@ -1276,25 +1630,16 @@ Ext.define("TSMultiKanbanApp", {
         console.log('_onReadyFieldChanged',record,fields,card);
         
         var column = card.ownerColumn;
-        console.log('column', column);
-        console.log('attribute on column:', column.attribute);
-        
+
         var columnSetting = this._getColumnSetting();
         if (columnSetting) {
             var setting = columnSetting[column.getValue()];
-            console.log('columnSetting', columnSetting);
-            console.log('setting',setting);
-            console.log('maps', setting.readyMapping);
-
+            
             if (setting && setting.readyMapping && card.getRecord().get('_type') == 'defect') {
-                console.log('ya');
                 var state = card.getRecord().get('State');
                 var ready = card.getRecord().get('Ready');
-                
-                console.log(ready,state,setting.readyMapping);
-                
+                                
                 if ( ready && state != setting.readyMapping ) {
-                    console.log("Changing STATE to: ", setting.readyMapping);
                     card.getRecord().set('State', setting.readyMapping);
                     card.getRecord().save();
                 }
@@ -1315,6 +1660,26 @@ Ext.define("TSMultiKanbanApp", {
             if (setting && setting.stateMapping && card.getRecord().get('_type') == 'defect') {
                 card.getRecord().set('State', setting.stateMapping);
             }
+        }
+        
+        var cardboardSetting = this.getSettings();
+        if (cardboardSetting && cardboardSetting.showChangeReasonPopup ) {
+            card.getRecord().set(cardboardSetting.changeReasonField,null);
+            Ext.create('Rally.ui.dialog.ChangeReasonDialog', {
+                autoShow: true,
+                draggable: true,
+                width: 200,
+                modal: true,
+                dropdownField: cardboardSetting.changeReasonField,
+                model: 'UserStory',
+                listeners: {
+                    scope: this,
+                    valuechosen: function(dialog, selected_value) {
+                        card.getRecord().set(cardboardSetting.changeReasonField,selected_value);
+                        card.getRecord().save();
+                    }
+                }
+            });
         }
     },
 
@@ -1372,6 +1737,14 @@ Ext.define("TSMultiKanbanApp", {
     margin-top: 25px;
     margin-right: 5px;
     cursor: pointer;
+}
+
+.x-window-rally {
+  -webkit-border-radius: 10px;
+  -moz-border-radius: 10px;
+  -ms-border-radius: 10px;
+  -o-border-radius: 10px;
+  border-radius: 10px;
 }
 
 .ext-ie .kanban .rly-right .filterInfo {

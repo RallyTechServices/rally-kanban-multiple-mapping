@@ -396,25 +396,16 @@ Ext.define("TSMultiKanbanApp", {
         console.log('_onReadyFieldChanged',record,fields,card);
         
         var column = card.ownerColumn;
-        console.log('column', column);
-        console.log('attribute on column:', column.attribute);
-        
+
         var columnSetting = this._getColumnSetting();
         if (columnSetting) {
             var setting = columnSetting[column.getValue()];
-            console.log('columnSetting', columnSetting);
-            console.log('setting',setting);
-            console.log('maps', setting.readyMapping);
-
+            
             if (setting && setting.readyMapping && card.getRecord().get('_type') == 'defect') {
-                console.log('ya');
                 var state = card.getRecord().get('State');
                 var ready = card.getRecord().get('Ready');
-                
-                console.log(ready,state,setting.readyMapping);
-                
+                                
                 if ( ready && state != setting.readyMapping ) {
-                    console.log("Changing STATE to: ", setting.readyMapping);
                     card.getRecord().set('State', setting.readyMapping);
                     card.getRecord().save();
                 }
@@ -435,6 +426,26 @@ Ext.define("TSMultiKanbanApp", {
             if (setting && setting.stateMapping && card.getRecord().get('_type') == 'defect') {
                 card.getRecord().set('State', setting.stateMapping);
             }
+        }
+        
+        var cardboardSetting = this.getSettings();
+        if (cardboardSetting && cardboardSetting.showChangeReasonPopup ) {
+            card.getRecord().set(cardboardSetting.changeReasonField,null);
+            Ext.create('Rally.ui.dialog.ChangeReasonDialog', {
+                autoShow: true,
+                draggable: true,
+                width: 200,
+                modal: true,
+                dropdownField: cardboardSetting.changeReasonField,
+                model: 'UserStory',
+                listeners: {
+                    scope: this,
+                    valuechosen: function(dialog, selected_value) {
+                        card.getRecord().set(cardboardSetting.changeReasonField,selected_value);
+                        card.getRecord().save();
+                    }
+                }
+            });
         }
     },
 
