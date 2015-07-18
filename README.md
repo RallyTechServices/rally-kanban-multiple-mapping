@@ -2,22 +2,26 @@
 
 A kanban board that allows more to map both schedule state and defect state to the columns.
 
-In addition to mapping columns to schedule states and defect states, the app also allows 
-for configuring a mapping of columns to defect states that will be set if the ready box is
-checked.
+In addition to mapping columns to schedule states and defect states, the app 
+also allows for configuring a mapping of columns to defect states that will 
+be set if the ready box is checked.
 
-Finally, it's possible to set a drop-down field to hold values for why the card changed from one
-column to another.  If this is checked and a field chosen, then the user will be prompted to pick
-a drop-down value every time a card moves from one column to another.
+The final mapping available is a reason for each column change.  This is only
+applied to defects.  
 
 ## Development Notes
 
 * Defect state is set in onCardSaved when the card is moved
 * Defect state from the Ready check is saved by a listener on the record changed action.
-* Because the dialog is asynchronous for the change column popup, we clear out the value and
-  also have to change it.  Would be nice to wrap this in the transaction or allow for failure here
-  to stop the column change.
 * Tried to make a little more generic version of the row settings field for the change column field
+
+At one point it was possible to make a popup for asking for reason for moving
+from one column to another.  The code is still here; it's just commented out
+and the settings replaced with the individual mapping of reason (defaulting
+to resolution field).
+  * Because the dialog is asynchronous for the change column popup, we clear out
+the value and also have to change it.  Would be nice to wrap this in the 
+transaction or allow for failure here to stop the column change.
 
 ### First Load
 
