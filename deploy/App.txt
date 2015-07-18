@@ -3,11 +3,11 @@
 <head>
     <title>Technical Services Multi-Map Kanban  Board</title>
     <!--  (c) 2015 Rally Software Development Corp.  All Rights Reserved. -->
-    <!--  Build Date: Fri Jul 17 2015 18:09:53 GMT-0700 (PDT) -->
+    <!--  Build Date: Fri Jul 17 2015 19:33:41 GMT-0700 (PDT) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Fri Jul 17 2015 18:09:53 GMT-0700 (PDT)";
-        var CHECKSUM = 61716917081;
+        var APP_BUILD_DATE = "Fri Jul 17 2015 19:33:41 GMT-0700 (PDT)";
+        var CHECKSUM = 69718774452;
     </script>
     
     <script type="text/javascript" src="/apps/2.0/sdk.js"></script>
@@ -492,9 +492,11 @@ Ext.define('Rally.apps.kanban.ColumnSettingsField', {
 
     fieldSubTpl: '<div id="{id}" class="settings-grid"></div>',
 
-    width: 600,
+    width: 800,
     cls: 'column-settings',
 
+    changeReasonField: null,
+    
     config: {
         /**
          * @cfg {Object}
@@ -518,10 +520,15 @@ Ext.define('Rally.apps.kanban.ColumnSettingsField', {
         this.callParent(arguments);
 
         this._store = Ext.create('Ext.data.Store', {
-            fields: ['column', 'shown', 'wip', 'scheduleStateMapping', 'stateMapping', 'readyMapping', 'cardFields'],
+            fields: ['column', 'shown', 'wip', 'scheduleStateMapping', 'stateMapping', 'readyMapping', 'cardFields', 'reasonMapping'],
             data: []
         });
 
+        this._createGrid();
+        
+    },
+    
+    _createGrid: function() {
         this._grid = Ext.create('Rally.ui.grid.Grid', {
             autoWidth: true,
             renderTo: this.inputEl,
@@ -644,6 +651,29 @@ Ext.define('Rally.apps.kanban.ColumnSettingsField', {
                 }
             }
         ];
+        
+        if ( !Ext.isEmpty(this.changeReasonField) ) { 
+            columns.push({
+                text: 'Chg Reason Mapping',
+                dataIndex: 'reasonMapping',
+                emptyCellText: '--No Mapping--',
+                flex: 3,
+                editor: {
+                    xtype: 'rallyfieldvaluecombobox',
+                    model: Ext.identityFn('Defect'),
+                    field: this.changeReasonField.name,
+                    listeners: {
+                        ready: function (combo) {
+                            var noMapping = {};
+                            noMapping[combo.displayField] = '--No Mapping--';
+                            noMapping[combo.valueField] = '';
+
+                            combo.store.insert(0, [noMapping]);
+                        }
+                    }
+                }
+            });
+        }
 
         if (this.shouldShowColumnLevelFieldPicker) {
             columns.push({
@@ -739,7 +769,8 @@ Ext.define('Rally.apps.kanban.ColumnSettingsField', {
                     wip: record.get('wip'),
                     scheduleStateMapping: record.get('scheduleStateMapping'),
                     stateMapping: record.get('stateMapping'),
-                    readyMapping: record.get('readyMapping')
+                    readyMapping: record.get('readyMapping'),
+                    reasonMapping: record.get('reasonMapping')
                 };
                 if (this.shouldShowColumnLevelFieldPicker) {
                     var cardFields = this._getCardFields(record.get('cardFields'));
@@ -780,7 +811,38 @@ Ext.define('Rally.apps.kanban.ColumnSettingsField', {
             scope: this
         });
     },
+    
+    refreshWithNewReasonField: function(field,clear_values) {
+        delete this._storeLoaded;
+        field.getAllowedValueStore().load({
+            callback: function(records, operation, success) {
+                if ( field != this.changeReasonField ) {
+                    this.changeReasonField = field;
+    //                
+                    if (! Ext.isEmpty(this._grid) ) { this._grid.destroy(); }
+                    
+                    this._createGrid();
+                    
+                    if ( clear_values ) {
+                        this.clearReasonMapping();
+                    }
+                    
+                    this._storeLoaded = true;
+                }
+            },
+            scope: this
+        });
+    },
+    
+    clearReasonMapping: function() {
+        console.log('clearReasonMapping');
+        this._store.each(function(record) {
+            console.log('record',record);
+            record.set('reasonMapping','');
+        }, this);
 
+    },
+    
     _recordToGridRow: function(allowedValue) {
         var columnName = allowedValue.get('StringValue');
         var pref = this._store.getCount() === 0 ? this._getColumnValue(columnName) : null;
@@ -792,6 +854,7 @@ Ext.define('Rally.apps.kanban.ColumnSettingsField', {
             scheduleStateMapping: '',
             stateMapping: '',
             readyMapping: '',
+            reasonMapping: '',
             cardFields: this.defaultCardFields
         };
 
@@ -801,7 +864,8 @@ Ext.define('Rally.apps.kanban.ColumnSettingsField', {
                 wip: pref.wip,
                 scheduleStateMapping: pref.scheduleStateMapping,
                 stateMapping: pref.stateMapping,
-                readyMapping: pref.readyMapping
+                readyMapping: pref.readyMapping,
+                reasonMapping: pref.reasonMapping
             });
 
             if (pref.cardFields) {
@@ -1028,6 +1092,29 @@ Ext.define('Rally.apps.kanban.Settings', {
             },
             
             {
+                name: 'changeReasonField',
+                xtype: 'rallyfieldcombobox',
+                model: Ext.identityFn('Defect'),
+                margin: '10px 0 0 0',
+                fieldLabel: 'Chg Reason Field',
+                listeners: {
+                    select: function(combo) {
+                        this.fireEvent('reasonFieldSelected', combo.getRecord().get('fieldDefinition'),true);
+                    },
+                    ready: function(combo) {
+                        combo.store.filterBy(function(record) {
+                            var attr = record.get('fieldDefinition').attributeDefinition;
+                            return attr && !attr.ReadOnly && attr.Constrained && attr.AttributeType !== 'OBJECT' && attr.AttributeType !== 'COLLECTION';
+                        });
+                        if (combo.getRecord()) {
+                            this.fireEvent('reasonFieldSelected', combo.getRecord().get('fieldDefinition'),false);
+                        }
+                    }
+                },
+                bubbleEvents: ['reasonFieldSelected', 'fieldready']
+            },
+            
+            {
                 name: 'columns',
                 readyEvent: 'ready',
                 fieldLabel: '',
@@ -1038,6 +1125,9 @@ Ext.define('Rally.apps.kanban.Settings', {
                 handlesEvents: {
                     fieldselected: function(field) {
                         this.refreshWithNewField(field);
+                    },
+                    reasonFieldSelected: function(field,clear_values) {
+                        this.refreshWithNewReasonField(field,clear_values);
                     }
                 },
                 listeners: {
@@ -1067,26 +1157,26 @@ Ext.define('Rally.apps.kanban.Settings', {
            ]
         });
         
-        items.push({
-            name: 'columnChangeReasonField',
-            xtype: 'changesettingsfield',
-            fieldLabel: 'Change Reason Field',
-            margin: '10 0 0 0',
-            checkboxName: 'showChangeReasonPopup',
-            fieldboxName: 'changeReasonField',
-            mapsToMultiplePreferenceKeys: ['showChangeReasonPopup', 'changeReasonField'],
-            readyEvent: 'ready',
-            isAllowedFieldFn: function(field) {
-                var attr = field.attributeDefinition;
-                return (attr.Custom && (attr.Constrained || attr.AttributeType.toLowerCase() !== 'string') ||
-                    attr.Constrained || _.contains(['boolean'], attr.AttributeType.toLowerCase())) &&
-                    !_.contains(['web_link', 'text', 'date'], attr.AttributeType.toLowerCase());
-            },
-            explicitFields: [
-                
-           ]
-        });
-        
+//        items.push({
+//            name: 'columnChangeReasonField',
+//            xtype: 'changesettingsfield',
+//            fieldLabel: 'Change Reason Field',
+//            margin: '10 0 0 0',
+//            checkboxName: 'showChangeReasonPopup',
+//            fieldboxName: 'changeReasonField',
+//            mapsToMultiplePreferenceKeys: ['showChangeReasonPopup', 'changeReasonField'],
+//            readyEvent: 'ready',
+//            isAllowedFieldFn: function(field) {
+//                var attr = field.attributeDefinition;
+//                return (attr.Custom && (attr.Constrained || attr.AttributeType.toLowerCase() !== 'string') ||
+//                    attr.Constrained || _.contains(['boolean'], attr.AttributeType.toLowerCase())) &&
+//                    !_.contains(['web_link', 'text', 'date'], attr.AttributeType.toLowerCase());
+//            },
+//            explicitFields: [
+//                
+//           ]
+//        });
+//        
         items.push(
             {
                 name: 'hideReleasedCards',
@@ -1309,6 +1399,7 @@ Ext.define("TSMultiKanbanApp", {
                 Completed: {wip: ''},
                 Accepted: {wip: ''}
             }),
+            changeReasonField: 'Resolution',
             cardFields: 'FormattedID,Name,Owner,Discussion,Tasks,Defects', //remove with COLUMN_LEVEL_FIELD_PICKER_ON_KANBAN_SETTINGS
             hideReleasedCards: false,
             showCardAge: true,
@@ -1665,7 +1756,7 @@ Ext.define("TSMultiKanbanApp", {
     },
 
     _onReadyFieldChanged: function(record, fields, card) {
-        console.log('_onReadyFieldChanged',record,fields,card);
+        this.logger.log('_onReadyFieldChanged',record,fields,card);
         
         var column = card.ownerColumn;
 
@@ -1689,6 +1780,10 @@ Ext.define("TSMultiKanbanApp", {
     
     _onBeforeCardSaved: function(column, card, type) {
         var columnSetting = this._getColumnSetting();
+        var cardboardSetting = this.getSettings();
+
+        this.logger.log('columnSetting,cardboardSetting', columnSetting, cardboardSetting);
+        
         if (columnSetting) {
             var setting = columnSetting[column.getValue()];
             if (setting && setting.scheduleStateMapping) {
@@ -1698,9 +1793,13 @@ Ext.define("TSMultiKanbanApp", {
             if (setting && setting.stateMapping && card.getRecord().get('_type') == 'defect') {
                 card.getRecord().set('State', setting.stateMapping);
             }
+            
+            if (setting && setting.reasonMapping && card.getRecord().get('_type') == 'defect' ) {
+                this.logger.log('saving reason:', cardboardSetting.changeReasonField, setting.reasonMapping);
+                card.getRecord().set(cardboardSetting.changeReasonField, setting.reasonMapping);
+            }
         }
         
-        var cardboardSetting = this.getSettings();
         if (cardboardSetting && cardboardSetting.showChangeReasonPopup ) {
             card.getRecord().set(cardboardSetting.changeReasonField,null);
             Ext.create('Rally.ui.dialog.ChangeReasonDialog', {

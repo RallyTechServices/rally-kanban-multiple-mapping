@@ -37,6 +37,7 @@ Ext.define("TSMultiKanbanApp", {
                 Completed: {wip: ''},
                 Accepted: {wip: ''}
             }),
+            changeReasonField: 'Resolution',
             cardFields: 'FormattedID,Name,Owner,Discussion,Tasks,Defects', //remove with COLUMN_LEVEL_FIELD_PICKER_ON_KANBAN_SETTINGS
             hideReleasedCards: false,
             showCardAge: true,
@@ -393,7 +394,7 @@ Ext.define("TSMultiKanbanApp", {
     },
 
     _onReadyFieldChanged: function(record, fields, card) {
-        console.log('_onReadyFieldChanged',record,fields,card);
+        this.logger.log('_onReadyFieldChanged',record,fields,card);
         
         var column = card.ownerColumn;
 
@@ -417,6 +418,10 @@ Ext.define("TSMultiKanbanApp", {
     
     _onBeforeCardSaved: function(column, card, type) {
         var columnSetting = this._getColumnSetting();
+        var cardboardSetting = this.getSettings();
+
+        this.logger.log('columnSetting,cardboardSetting', columnSetting, cardboardSetting);
+        
         if (columnSetting) {
             var setting = columnSetting[column.getValue()];
             if (setting && setting.scheduleStateMapping) {
@@ -426,9 +431,13 @@ Ext.define("TSMultiKanbanApp", {
             if (setting && setting.stateMapping && card.getRecord().get('_type') == 'defect') {
                 card.getRecord().set('State', setting.stateMapping);
             }
+            
+            if (setting && setting.reasonMapping && card.getRecord().get('_type') == 'defect' ) {
+                this.logger.log('saving reason:', cardboardSetting.changeReasonField, setting.reasonMapping);
+                card.getRecord().set(cardboardSetting.changeReasonField, setting.reasonMapping);
+            }
         }
         
-        var cardboardSetting = this.getSettings();
         if (cardboardSetting && cardboardSetting.showChangeReasonPopup ) {
             card.getRecord().set(cardboardSetting.changeReasonField,null);
             Ext.create('Rally.ui.dialog.ChangeReasonDialog', {
