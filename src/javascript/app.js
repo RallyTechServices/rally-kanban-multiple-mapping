@@ -11,13 +11,11 @@ Ext.define("TSMultiKanbanApp", {
         'Rally.ui.cardboard.CardBoard',
         'Rally.ui.cardboard.plugin.Scrollable',
         'Rally.ui.report.StandardReport',
-        'Rally.clientmetrics.ClientMetricsRecordable',
         'Rally.ui.gridboard.plugin.GridBoardCustomFilterControl',
         'Rally.ui.gridboard.plugin.GridBoardFieldPicker',
         'Rally.ui.cardboard.plugin.FixedHeader'
     ],
     mixins: [
-        'Rally.clientmetrics.ClientMetricsRecordable'
     ],
     cls: 'kanban',
     logger: new Rally.technicalservices.Logger(),
@@ -72,7 +70,12 @@ Ext.define("TSMultiKanbanApp", {
                 text: 'Print',
                 handler: this._print,
                 scope: this
-            }
+            }/*,
+            {
+                text: 'About...',
+                handler: this._launchInfo,
+                scope: this
+            }*/
         ];
     },
 
@@ -231,6 +234,7 @@ Ext.define("TSMultiKanbanApp", {
         });
     },
 
+    
     _getCardboardConfig: function() {
         var config = {
             xtype: 'rallycardboard',
@@ -394,10 +398,9 @@ Ext.define("TSMultiKanbanApp", {
     },
 
     _onReadyFieldChanged: function(record, fields, card) {
-        this.logger.log('_onReadyFieldChanged',record,fields,card);
-        
         var column = card.ownerColumn;
 
+        
         var columnSetting = this._getColumnSetting();
         if (columnSetting) {
             var setting = columnSetting[column.getValue()];
@@ -405,10 +408,15 @@ Ext.define("TSMultiKanbanApp", {
             if (setting && setting.readyMapping && card.getRecord().get('_type') == 'defect') {
                 var state = card.getRecord().get('State');
                 var ready = card.getRecord().get('Ready');
-                                
+                
+                
                 if ( ready && state != setting.readyMapping ) {
                     card.getRecord().set('State', setting.readyMapping);
-                    card.getRecord().save();
+                    card.getRecord().save().then({
+                        success: function() {
+                            column.refreshCard(card.getRecord());
+                        }
+                    });
                 }
             }
         }
@@ -420,7 +428,7 @@ Ext.define("TSMultiKanbanApp", {
         var columnSetting = this._getColumnSetting();
         var cardboardSetting = this.getSettings();
 
-        this.logger.log('columnSetting,cardboardSetting', columnSetting, cardboardSetting);
+        var me = this;
         
         if (columnSetting) {
             var setting = columnSetting[column.getValue()];
@@ -433,36 +441,37 @@ Ext.define("TSMultiKanbanApp", {
             }
             
             if (setting && setting.reasonMapping && card.getRecord().get('_type') == 'defect' ) {
-                this.logger.log('saving reason:', cardboardSetting.changeReasonField, setting.reasonMapping);
                 card.getRecord().set(cardboardSetting.changeReasonField, setting.reasonMapping);
             }
         }
         
-        if (cardboardSetting && cardboardSetting.showChangeReasonPopup ) {
-            card.getRecord().set(cardboardSetting.changeReasonField,null);
-            Ext.create('Rally.ui.dialog.ChangeReasonDialog', {
-                autoShow: true,
-                draggable: true,
-                width: 200,
-                modal: true,
-                dropdownField: cardboardSetting.changeReasonField,
-                model: 'UserStory',
-                listeners: {
-                    scope: this,
-                    valuechosen: function(dialog, selected_value) {
-                        card.getRecord().set(cardboardSetting.changeReasonField,selected_value);
-                        card.getRecord().save();
-                    }
-                }
-            });
-        }
+        return true;
+        
+//        if (cardboardSetting && cardboardSetting.showChangeReasonPopup ) {
+//            card.getRecord().set(cardboardSetting.changeReasonField,null);
+//            Ext.create('Rally.ui.dialog.ChangeReasonDialog', {
+//                autoShow: true,
+//                draggable: true,
+//                width: 200,
+//                modal: true,
+//                dropdownField: cardboardSetting.changeReasonField,
+//                model: 'UserStory',
+//                listeners: {
+//                    scope: this,
+//                    valuechosen: function(dialog, selected_value) {
+//                        card.getRecord().set(cardboardSetting.changeReasonField,selected_value);
+//                        card.getRecord().save();
+//                    }
+//                }
+//            });
+//        }
     },
 
     _publishContentUpdated: function() {
         this.fireEvent('contentupdated');
-        if (Rally.BrowserTest) {
-            Rally.BrowserTest.publishComponentReady(this);
-        }
+//        if (Rally.BrowserTest) {
+//            Rally.BrowserTest.publishComponentReady(this);
+//        }
         this.recordComponentReady({
             miscData: {
                 swimLanes: this.getSetting('showRows'),
@@ -471,18 +480,10 @@ Ext.define("TSMultiKanbanApp", {
         });
     },
 
-    _publishContentUpdatedNoDashboardLayout: function() {
+    _publishContentUpdatedNoDashboardLayout: function(x,y,z) {
+        console.log(x,y,z);
         this.fireEvent('contentupdated', {dashboardLayout: false});
-    },
-    
-    getOptions: function() {
-        return [
-            {
-                text: 'About...',
-                handler: this._launchInfo,
-                scope: this
-            }
-        ];
+                                   // column.refreshCard(card.getRecord());
     },
     
     _launchInfo: function() {
