@@ -70,12 +70,12 @@ Ext.define("TSMultiKanbanApp", {
                 text: 'Print',
                 handler: this._print,
                 scope: this
-            }/*,
+            },
             {
                 text: 'About...',
                 handler: this._launchInfo,
                 scope: this
-            }*/
+            }
         ];
     },
 

@@ -3,11 +3,11 @@
 <head>
     <title>Technical Services Multi-Map Kanban  Board</title>
     <!--  (c) 2015 Rally Software Development Corp.  All Rights Reserved. -->
-    <!--  Build Date: Fri Jul 24 2015 17:21:16 GMT-0700 (PDT) -->
+    <!--  Build Date: Fri Jul 24 2015 17:29:50 GMT-0700 (PDT) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Fri Jul 24 2015 17:21:16 GMT-0700 (PDT)";
-        var CHECKSUM = 76288293496;
+        var APP_BUILD_DATE = "Fri Jul 24 2015 17:29:50 GMT-0700 (PDT)";
+        var CHECKSUM = 76279112891;
     </script>
     
     <script type="text/javascript" src="/apps/2.0/sdk.js"></script>
@@ -1524,12 +1524,12 @@ Ext.define("TSMultiKanbanApp", {
                 text: 'Print',
                 handler: this._print,
                 scope: this
-            }/*,
+            },
             {
                 text: 'About...',
                 handler: this._launchInfo,
                 scope: this
-            }*/
+            }
         ];
     },
 
