@@ -3,11 +3,11 @@
 <head>
     <title>Technical Services Multi-Map Kanban  Board</title>
     <!--  (c) 2015 Rally Software Development Corp.  All Rights Reserved. -->
-    <!--  Build Date: Fri Jul 24 2015 16:29:48 GMT-0700 (PDT) -->
+    <!--  Build Date: Fri Jul 24 2015 17:21:16 GMT-0700 (PDT) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Fri Jul 24 2015 16:29:48 GMT-0700 (PDT)";
-        var CHECKSUM = 73268152712;
+        var APP_BUILD_DATE = "Fri Jul 24 2015 17:21:16 GMT-0700 (PDT)";
+        var CHECKSUM = 76288293496;
     </script>
     
     <script type="text/javascript" src="/apps/2.0/sdk.js"></script>
@@ -1364,41 +1364,92 @@ Ext.define('Rally.technicalservices.Logger',{
 
 });
 
-Ext.override(Rally.ui.cardboard.plugin.ColumnDropController,{
-
-    _onDropSaveSuccess: function (column, sourceColumn, card, updatedRecord, type) {
-        console.log('before publixh',updatedRecord, Rally.data.Ranker.getRankField(updatedRecord.self), card);
-        this.publish(Rally.Message.objectUpdate, updatedRecord, [Rally.data.Ranker.getRankField(updatedRecord.self)], card);
-        console.log('after publixh');
-        column.fireEvent('aftercarddroppedsave', column, card, type, sourceColumn);
-        console.log('after event');
-        if (this._cardBlocked) {
-            card.fireEvent('blocked');
+/*
+ * overrides to allow for editing empty fields on the card
+ * 
+ */
+ Ext.override(Rally.ui.renderer.template.LabeledFieldTemplate, {
+    apply: function(values) {
+        var valueStr = this.valueTemplate.apply(values);
+        if (valueStr.length < 1) {
+            valueStr = "--";
+            //return valueStr;
         }
-    },
-    
-    handleBeforeCardDroppedSave: function (options) {
-        console.log('oh, yeah');
-        
-        options.record.save({
-            requester: options.column,
-            callback: function (updatedRecord, operation) {
-                if (operation.success) {
-                    console.log('success');
-                    this._onDropSaveSuccess(options.column, options.sourceColumn, options.card, updatedRecord, options.type);
-                } else {
-                    console.log('fail');
-                    this._onDropSaveFailure(options.column, options.sourceColumn, options.currentReadyValue,
-                        options.record, options.card, options.sourceIndex, operation);
-                }
-            },
 
-            scope: this,
-            params: Ext.apply({
-                fetch: options.column.getAllFetchFields()
-            }, options.params)
-        });
+        var renderedValue = [
+            '<div class="rui-field-value">',
+            valueStr,
+            '</div>'
+        ];
+
+        if (this.fieldLabel) {
+            renderedValue = [
+                '<span class="rui-field-label">',
+                Ext.htmlEncode(this.fieldLabel),
+                ':</span>'
+            ].concat(renderedValue);
+        }
+
+        return renderedValue.join('');
     }
+});
+
+Ext.override(Rally.ui.cardboard.plugin.CardContentLeft,{
+
+    _getRenderTpl: function(fieldDefinition) {
+        console.log('_getRenderTpl',fieldDefinition);
+        
+        var card = this.card,
+            modelField = card.getRecord().getField(fieldDefinition.name),
+            hasData = true /*(Ext.isFunction(fieldDefinition.hasValue) && fieldDefinition.hasValue()) || card.getRecord().hasValue(modelField)*/,
+            isRenderable = hasData || (modelField && modelField.isCollection());
+
+        if (modelField && modelField.isHidden) {
+            return null;
+        }
+
+        if (!isRenderable) {
+            return null;
+        }
+
+        if (!fieldDefinition.renderTpl && modelField) {
+            return Rally.ui.cardboard.CardRendererFactory.getRenderTemplate(modelField);
+        }
+
+        return fieldDefinition.renderTpl;
+    },
+
+    _getFieldHtml: function(fieldDefinition) {
+        var html = '',
+            cls = '',
+            typeCls = '',
+            tpl = this._getRenderTpl(fieldDefinition);
+
+        if (tpl) {
+            html = tpl.apply(this.card.getRecord().data);
+            var card = this.card;
+            
+            // don't show collections unless there's a value
+            var modelField = card.getRecord().getField(fieldDefinition.name);
+            var hasData = (Ext.isFunction(fieldDefinition.hasValue) && fieldDefinition.hasValue()) || card.getRecord().hasValue(modelField);
+            if ( modelField && modelField.isCollection() && !hasData ) {
+                return '';
+            }
+            
+            if (html) {
+                cls = this._isStatusField(fieldDefinition) ? 'status-field ' : '';
+
+                var field = this.card.getRecord().self.getField(fieldDefinition.name);
+                if (field && field.attributeDefinition) {
+                    typeCls = ' type-' + field.attributeDefinition.AttributeType.toLowerCase();
+                }
+                html = '<div class="field-content ' + cls + fieldDefinition.name + typeCls + '">' + html + '</div>';
+            }
+        }
+
+        return html;
+    }
+
 });
 
 Ext.define("TSMultiKanbanApp", {
