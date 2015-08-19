@@ -3,11 +3,11 @@
 <head>
     <title>Technical Services Multi-Map Kanban  Board</title>
     <!--  (c) 2015 Rally Software Development Corp.  All Rights Reserved. -->
-    <!--  Build Date: Fri Jul 24 2015 17:29:50 GMT-0700 (PDT) -->
+    <!--  Build Date: Wed Aug 19 2015 11:41:28 GMT-0700 (PDT) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Fri Jul 24 2015 17:29:50 GMT-0700 (PDT)";
-        var CHECKSUM = 76279112891;
+        var APP_BUILD_DATE = "Wed Aug 19 2015 11:41:28 GMT-0700 (PDT)";
+        var CHECKSUM = 77148546392;
     </script>
     
     <script type="text/javascript" src="/apps/2.0/sdk.js"></script>
@@ -1397,13 +1397,12 @@ Ext.define('Rally.technicalservices.Logger',{
 Ext.override(Rally.ui.cardboard.plugin.CardContentLeft,{
 
     _getRenderTpl: function(fieldDefinition) {
-        console.log('_getRenderTpl',fieldDefinition);
-        
         var card = this.card,
             modelField = card.getRecord().getField(fieldDefinition.name),
             hasData = true /*(Ext.isFunction(fieldDefinition.hasValue) && fieldDefinition.hasValue()) || card.getRecord().hasValue(modelField)*/,
             isRenderable = hasData || (modelField && modelField.isCollection());
 
+            
         if (modelField && modelField.isHidden) {
             return null;
         }
@@ -1419,6 +1418,15 @@ Ext.override(Rally.ui.cardboard.plugin.CardContentLeft,{
         return fieldDefinition.renderTpl;
     },
 
+    _hasData: function(card,fieldDefinition) {
+        var record = card.getRecord();
+        var modelField = card.getRecord().getField(fieldDefinition.name);
+
+        return (Ext.isFunction(fieldDefinition.hasValue) && fieldDefinition.hasValue()) 
+            || record.hasValue(modelField)
+            || ( record.get("Summary")[fieldDefinition.name] && record.get("Summary")[fieldDefinition.name].Count > 0 ) // collections;
+    },
+    
     _getFieldHtml: function(fieldDefinition) {
         var html = '',
             cls = '',
@@ -1426,12 +1434,15 @@ Ext.override(Rally.ui.cardboard.plugin.CardContentLeft,{
             tpl = this._getRenderTpl(fieldDefinition);
 
         if (tpl) {
-            html = tpl.apply(this.card.getRecord().data);
             var card = this.card;
+            html = tpl.apply(card.getRecord().data);
+            // 
+            
             
             // don't show collections unless there's a value
             var modelField = card.getRecord().getField(fieldDefinition.name);
-            var hasData = (Ext.isFunction(fieldDefinition.hasValue) && fieldDefinition.hasValue()) || card.getRecord().hasValue(modelField);
+            var hasData = this._hasData(card,fieldDefinition);
+            
             if ( modelField && modelField.isCollection() && !hasData ) {
                 return '';
             }
