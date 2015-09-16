@@ -15,8 +15,7 @@ Ext.define("TSMultiKanbanApp", {
         'Rally.ui.gridboard.plugin.GridBoardFieldPicker',
         'Rally.ui.cardboard.plugin.FixedHeader'
     ],
-    mixins: [
-    ],
+    mixins: [],
     cls: 'kanban',
     logger: new Rally.technicalservices.Logger(),
 
@@ -29,6 +28,7 @@ Ext.define("TSMultiKanbanApp", {
         defaultSettings: {
             groupByField: 'ScheduleState',
             showRows: false,
+            ignoreModifiedFieldsInSameColumn: false,
             columns: Ext.JSON.encode({
                 Defined: {wip: ''},
                 'In-Progress': {wip: ''},
@@ -424,7 +424,10 @@ Ext.define("TSMultiKanbanApp", {
         
     },
     
-    _onBeforeCardSaved: function(column, card, type) {
+    _onBeforeCardSaved: function(column, card, type, sourceColumn) {
+        if ( sourceColumn == column && ! this.ignoreModifiedFieldsInSameColumn ) {
+            return true;
+        }
         var columnSetting = this._getColumnSetting();
         var cardboardSetting = this.getSettings();
 
@@ -481,7 +484,6 @@ Ext.define("TSMultiKanbanApp", {
     },
 
     _publishContentUpdatedNoDashboardLayout: function(x,y,z) {
-        console.log(x,y,z);
         this.fireEvent('contentupdated', {dashboardLayout: false});
                                    // column.refreshCard(card.getRecord());
     },

@@ -127,6 +127,14 @@ Ext.define('Rally.apps.kanban.Settings', {
                 margin: '10 0 0 0',
                 boxLabel: 'Hide cards in last visible column if assigned to a release'
             },
+            // persistModifiedFieldsInSameColumn
+            {
+                name: 'ignoreModifiedFieldsInSameColumn',
+                xtype: 'rallycheckboxfield',
+                fieldLabel: '',
+                margin: '5 0 10 80',
+                boxLabel: 'Tick to apply mapped changes even when cards are moved inside the same column.'
+            },
             {
                 type: 'cardage',
                 config: {
