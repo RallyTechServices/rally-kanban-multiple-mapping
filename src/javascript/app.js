@@ -28,7 +28,7 @@ Ext.define("TSMultiKanbanApp", {
         defaultSettings: {
             groupByField: 'ScheduleState',
             showRows: false,
-            ignoreModifiedFieldsInSameColumn: false,
+            applyModifiedFieldsInSameColumn: false,
             columns: Ext.JSON.encode({
                 Defined: {wip: ''},
                 'In-Progress': {wip: ''},
@@ -424,10 +424,28 @@ Ext.define("TSMultiKanbanApp", {
         
     },
     
-    _onBeforeCardSaved: function(column, card, type, sourceColumn) {
-        if ( sourceColumn == column && ! this.ignoreModifiedFieldsInSameColumn ) {
+    // settings are saved as "true" or "false" sometimes instead of true or false
+    _isTruthLike: function(value) {
+        if ( Ext.isBoolean( value ) ) {
+            return value;
+        }
+        
+        if ( Ext.util.Format.lowercase(value) == "true" ) {
             return true;
         }
+        
+        return false;
+    },
+    
+    _onBeforeCardSaved: function(column, card, type, sourceColumn) {
+        var applyModifiedFieldsInSameColumn = this.getSetting('applyModifiedFieldsInSameColumn');
+        this.logger.log("Apply Modified Fields In Same Column", applyModifiedFieldsInSameColumn, this._isTruthLike(applyModifiedFieldsInSameColumn) );
+        
+        if ( sourceColumn == column && ! this._isTruthLike(applyModifiedFieldsInSameColumn)) {
+            return true;
+        }
+        this.logger.log("--change values");
+        
         var columnSetting = this._getColumnSetting();
         var cardboardSetting = this.getSettings();
 

@@ -129,7 +129,7 @@ Ext.define('Rally.apps.kanban.Settings', {
             },
             // persistModifiedFieldsInSameColumn
             {
-                name: 'ignoreModifiedFieldsInSameColumn',
+                name: 'applyModifiedFieldsInSameColumn',
                 xtype: 'rallycheckboxfield',
                 fieldLabel: '',
                 margin: '5 0 10 80',
